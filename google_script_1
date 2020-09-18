@@ -1,0 +1,367 @@
+var counter = 2; 
+var g = counter; 
+var length = 0; 
+var lengthS = 0; 
+var userList = {}; 
+var idList = []; 
+var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet(); 
+var sheetData = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Сделки')
+var sheetStaff = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sales Forecast');
+var sheetGoods = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Resources Forecast');
+var sheetGoods2 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Resources Forecast 2');
+var sheetName = sheet.getName(); 
+var projectD;
+var dealD;
+var order = {'ID':'ASC'};
+var mS = {};  
+var mS2 = {};  
+if (sheetName == 'Товары') {
+  order = {'STAGE_ID':'DESC'}
+}
+
+function onOpenF(e) {
+  resetByRangesList_(sheetData,['A3:L10000']); 
+  getUserList(0);
+  idList = Object.keys(userList); 
+  send(0); 
+}
+
+function sorter(a,b) {
+  a = a.split('.');
+  b = b.split('.');
+  return (parseInt(a[1])+parseInt(a[0])*0.01) - (parseInt(b[1])+parseInt(b[0])*0.01);
+}
+
+const convertArrayToObject = (array, key) => {
+  const initialValue = {};
+  return array.reduce((obj, item) => {
+    return {
+      ...obj,
+      [item]: key,
+    };
+  }, initialValue);
+};
+
+function columnToLetter(column)
+{
+  var temp, letter = '';
+  while (column > 0)
+  {
+    temp = (column - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    column = (column - temp - 1) / 26;
+  }
+  return letter;
+}
+
+function resetByRangesList_(sheet, rangesAddressesList){
+  sheet.getRangeList(rangesAddressesList).clearContent();
+}
+
+function getUserList(start) {
+  let responseStaff = UrlFetchApp.fetch("https://___.bitrix24.ru/rest/12/____/user.get", {
+    'method' : 'get',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify({'start':start})
+  });
+  
+  let resSt = JSON.parse(responseStaff.getContentText());
+  for (let z = 0; z < resSt.result.length; z++) {
+    if (resSt.result[z].UF_DEPARTMENT[0] == 10
+       || resSt.result[z].UF_DEPARTMENT[0] == 22
+       || resSt.result[z].UF_DEPARTMENT[0] == 12
+       || resSt.result[z].UF_DEPARTMENT[0] == 36
+       || resSt.result[z].UF_DEPARTMENT[0] == 5
+       || resSt.result[z].UF_DEPARTMENT[0] == 16
+       || resSt.result[z].UF_DEPARTMENT[0] == 34
+       && resSt.result[z].LAST_NAME != null && resSt.result[z].LAST_NAME != 'null') {
+      userList[resSt.result[z].ID] = resSt.result[z].NAME+' '+resSt.result[z].LAST_NAME; 
+    } 
+  }
+  
+  if (resSt.result.length == 50) {
+    lengthS += 1; 
+    getUserList(50*lengthS); 
+  }
+}
+
+function send(start) {
+  let data = {
+    'order': order,
+    'select':['ID',
+              'TITLE',
+              'PROBABILITY',
+              'OPPORTUNITY',
+              'DATE_CREATE',
+              'CLOSEDATE',
+              'ASSIGNED_BY_ID',
+              'STAGE_ID',
+              'UF_CRM_1579530938357',
+              'UF_CRM_1586443620722',
+              'UF_CRM_1586443644173',
+              'UF_CRM_1586443665796',
+              'UF_CRM_1586443686989',
+              'UF_CRM_1586443700237',
+              'UF_CRM_1586443715642',
+              'UF_CRM_1586443730903',
+              'UF_CRM_1586443747775',
+              'UF_CRM_1586443769083',
+              'UF_CRM_1586443788019',
+              'UF_CRM_1586443801540',
+              'UF_CRM_1586443813989',
+              'UF_CRM_1586443825228',
+              'UF_CRM_1586443836840',
+              'UF_CRM_1586443864487',
+              'UF_CRM_1586443878073',
+              'UF_CRM_1586443894002',
+              'UF_CRM_1586443915794',
+              'UF_CRM_1586443929167',
+              'UF_CRM_1586443942010',
+              'UF_CRM_1586443955241',
+              'UF_CRM_1586443975934',
+              'UF_CRM_1586443990947',
+              'UF_CRM_1586444000999',
+              'UF_CRM_1586444013820'],
+    'start':start
+  };
+  
+  var options = {
+    'method' : 'get',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify(data)
+  };
+  
+  let response = UrlFetchApp.fetch("https://___.bitrix24.ru/rest/12/___/crm.deal.list", options);
+  let res = JSON.parse(response.getContentText());
+  
+  length += 1; 
+  
+  if (sheetName == 'Сделки' || sheetName == 'Sales Forecast') {
+    
+    for (var i = 0; i < res.result.length; i++) {
+      
+      projectD = res.result[i].UF_CRM_1579530938357.slice(0,10);
+      dealD = res.result[i].CLOSEDATE.slice(0,10);
+      
+      if (res.result[i].STAGE_ID != 'LOSE' && res.result[i].STAGE_ID != 'WON' && res.result[i].STAGE_ID != 'C2:WON') {
+        sheetData.getRange('A'+g).setValue(res.result[i].ID); 
+        sheetData.getRange('B'+g).setValue(res.result[i].TITLE); 
+        sheetData.getRange('C'+g).setValue(res.result[i].PROBABILITY); 
+        sheetData.getRange('D'+g).setValue(res.result[i].OPPORTUNITY); 
+        sheetData.getRange('E'+g).setValue(res.result[i].DATE_CREATE.slice(0,10)); 
+        sheetData.getRange('F'+g).setValue(dealD);
+        sheetData.getRange('G'+g).setValue(projectD);
+        sheetData.getRange('H'+g).setValue(userList[res.result[i].ASSIGNED_BY_ID]);
+        sheetData.getRange('I'+g).setValue(res.result[i].STAGE_ID);
+        g++;
+      }
+      
+      if (projectD && dealD && sheetName == 'Sales Forecast' && res.result[i].STAGE_ID != 'WON' && res.result[i].STAGE_ID != 'LOSE' && idList.includes(res.result[i].ASSIGNED_BY_ID)) {
+        let pD = projectD.split('-');
+        let dD = dealD.split('-');
+        let mE = (res.result[i].OPPORTUNITY*res.result[i].PROBABILITY)/100;
+        let month = (pD[0]-dD[0])*12 + (pD[1]-dD[1]+1);
+        let mEM = mE/month;
+        
+        let name = parseInt(dD[1]) + '.' + dD[0];
+        
+        for (let z = 1; z <= month; z++) {
+          if (mS[name] != undefined) {
+            if (mS[name][res.result[i].ASSIGNED_BY_ID] != undefined) {
+              mS[name][res.result[i].ASSIGNED_BY_ID] += mEM; 
+            } else {
+              if (mS[name][res.result[i].ASSIGNED_BY_ID] != undefined) {
+                mS[name][res.result[i].ASSIGNED_BY_ID] += mEM;
+              } else {
+                mS[name][res.result[i].ASSIGNED_BY_ID] = 0; 
+                mS[name][res.result[i].ASSIGNED_BY_ID] += mEM;
+              }
+            }
+          } else {
+            mS[name] = {}; 
+            mS[name] = convertArrayToObject(idList,0);
+            if (mS[name][res.result[i].ASSIGNED_BY_ID] != undefined) {
+              mS[name][res.result[i].ASSIGNED_BY_ID] += mEM;
+            } else {
+              mS[name][res.result[i].ASSIGNED_BY_ID] = 0; 
+              mS[name][res.result[i].ASSIGNED_BY_ID] += mEM;
+            }
+          }
+          
+          let monthCount = parseInt(dD[1])+z; 
+          let nameF = (monthCount) => (monthCount%12 != 0) ? (monthCount%12+ '.' + (parseInt(dD[0])+(monthCount/12|0))) : (12 + '.' + (parseInt(dD[0])+Math.floor(monthCount/13)));
+          name = nameF(monthCount);
+        }
+      }
+    }
+    if (Object.keys(mS).length != 0) {
+      let result = [Object.keys(mS).sort(sorter)];
+      result[0].unshift('ID', 'Сотрудник');
+      
+      let u = 2; 
+      let v = 1; 
+      for (let key1 in mS) {
+        v = 1; 
+        for (let key2 in mS[key1]) {
+          if (result[v]) {
+            result[v][u] = mS[key1][key2]; 
+          } else {
+            result.push([key2,userList[key2],mS[key1][key2]]);
+          }
+          v+=1; 
+        }
+        u+=1; 
+      }
+      sheetStaff.getRange(3, 1, v, u).setValues(result);
+    }
+  } else if (sheetName == 'Стратегия сделки' ) {
+    for (var i = 0; i < res.result.length; i++) {
+      let g = (counter+i); 
+      sheet.getRange('A'+g).setValue(res.result[i].ID); 
+      sheet.getRange('B'+g).setValue(res.result[i].TITLE); 
+      sheet.getRange('C'+g).setValue(res.result[i].UF_CRM_1586443620722); 
+      sheet.getRange('D'+g).setValue(res.result[i].UF_CRM_1586443644173); 
+      sheet.getRange('E'+g).setValue(res.result[i].UF_CRM_1586443665796); 
+      sheet.getRange('F'+g).setValue(res.result[i].UF_CRM_1586443686989);
+      sheet.getRange('G'+g).setValue(res.result[i].UF_CRM_1586443700237);
+      sheet.getRange('H'+g).setValue(res.result[i].UF_CRM_1586443715642); 
+      sheet.getRange('I'+g).setValue(res.result[i].UF_CRM_1586443730903); 
+      sheet.getRange('J'+g).setValue(res.result[i].UF_CRM_1586443747775); 
+      sheet.getRange('K'+g).setValue(res.result[i].UF_CRM_1586443769083);
+      sheet.getRange('L'+g).setValue(res.result[i].UF_CRM_1586443825228);
+      sheet.getRange('M'+g).setValue(res.result[i].UF_CRM_1586443836840); 
+      sheet.getRange('N'+g).setValue(res.result[i].UF_CRM_1586443864487); 
+      sheet.getRange('E'+g).setValue(res.result[i].UF_CRM_1586443878073); 
+      sheet.getRange('O'+g).setValue(res.result[i].UF_CRM_1586443894002);
+      sheet.getRange('P'+g).setValue(res.result[i].UF_CRM_1586443915794);
+      sheet.getRange('Q'+g).setValue(res.result[i].UF_CRM_1586443929167);
+      sheet.getRange('R'+g).setValue(res.result[i].UF_CRM_1586443942010);
+      sheet.getRange('S'+g).setValue(res.result[i].UF_CRM_1586443955241);
+      sheet.getRange('T'+g).setValue(res.result[i].UF_CRM_1586443975934);
+      sheet.getRange('U'+g).setValue(res.result[i].UF_CRM_1586443990947);
+      sheet.getRange('V'+g).setValue(res.result[i].UF_CRM_1586444000999);
+      sheet.getRange('W'+g).setValue(res.result[i].UF_CRM_1586444013820);
+    }
+  } else if (sheetName == 'Resources Forecast' || sheetName == 'Resources Forecast 2') {
+    var keyObject = {'Технический директор':0, 'Старший менеджер проектов':0, 'Менеджеры проектов':0, 'Старший аналитик':0, 'Аналитик':0, 'Дизайнер':0, 'Разработчик Backend TeamLead':0, 'Разработчик Backend (java)':0, 'Разработчик Frontend':0, 'Тестирование ПО':0, 'Support':0, 'SecOps':0, 'DevOps':0, 'DevOps TeamLead':0};
+
+    for (var i = 0; i < res.result.length; i++) {
+      if (res.result[i].STAGE_ID == 'PREPAYMENT_INVOICE' 
+       || res.result[i].STAGE_ID == 'EXECUTING' 
+       || res.result[i].STAGE_ID == 'FINAL_INVOICE' 
+       || res.result[i].STAGE_ID == '2' 
+       || res.result[i].STAGE_ID == '3' 
+       || res.result[i].STAGE_ID == 'WON') 
+      {
+        let f = counter; 
+
+        projectD = res.result[i].UF_CRM_1579530938357.slice(0,10);
+        dealD = res.result[i].CLOSEDATE.slice(0,10);
+
+        counter += 1;
+        
+        var responseGoods = UrlFetchApp.fetch("https://___.bitrix24.ru/rest/12/___/crm.deal.productrows.get", {
+          'method' : 'get',
+          'contentType': 'application/json',
+          'payload' : JSON.stringify({'ID': res.result[i].ID})
+        });
+        
+        var resGoods = JSON.parse(responseGoods.getContentText());
+        
+        if (projectD && dealD && resGoods.result[0]) {
+          for (var x = 0; x < resGoods.result.length; x++) {
+            let total = resGoods.result[x].PRICE*resGoods.result[x].QUANTITY;
+
+            counter += 1; 
+            
+            if (projectD && dealD && resGoods.result[0]) {
+              let pD = projectD.split('-');
+              let dD = dealD.split('-');
+              let month = (pD[0]-dD[0])*12 + (pD[1]-dD[1]+1);
+              let mEM = (resGoods.result[x].QUANTITY)/(month);
+              let mEM2 = (total)/(month);
+              
+              let name = parseInt(dD[1]) + '.' + dD[0];
+              for (let z = 1; z <= month; z++) {
+                if (mS[name] != undefined) {
+                  if (mS[name][resGoods.result[x].PRODUCT_NAME] != undefined) {
+                    mS[name][resGoods.result[x].PRODUCT_NAME] += mEM; 
+                    
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] += mEM2; 
+                  } else {
+                    keyObject[resGoods.result[x].PRODUCT_NAME] = 0; 
+                    for (k in mS) {
+                      mS[k][resGoods.result[x].PRODUCT_NAME] = 0; 
+                      
+                      mS2[k][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    }
+                    mS[name][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    mS[name][resGoods.result[x].PRODUCT_NAME] += mEM;
+                    
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] += mEM2;
+                  }
+                } else {
+                  mS[name] = Object.assign({},keyObject);
+                  mS2[name] = Object.assign({},keyObject);
+                  if (mS[name][resGoods.result[x].PRODUCT_NAME] != undefined) {
+                    mS[name][resGoods.result[x].PRODUCT_NAME] += mEM; 
+                    
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] += mEM2; 
+                  } else {
+                    keyObject[resGoods.result[x].PRODUCT_NAME] = 0; 
+                    for (k in mS) {
+                      mS[k][resGoods.result[x].PRODUCT_NAME] = 0;
+                      
+                      mS2[k][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    }
+                    mS[name][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    mS[name][resGoods.result[x].PRODUCT_NAME] += mEM;
+                    
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] = 0; 
+                    mS2[name][resGoods.result[x].PRODUCT_NAME] += mEM2;
+                  }
+                }
+                let monthCount = parseInt(dD[1])+z; 
+                let nameF = (monthCount) => (monthCount%12 != 0) ? (monthCount%12+ '.' + (parseInt(dD[0])+(monthCount/12|0))) : (12 + '.' + (parseInt(dD[0])+Math.floor(monthCount/13)));
+                name = nameF(monthCount);
+              }
+              
+            }
+          }
+          
+          
+        }
+      }
+    }
+    if (Object.keys(mS).length != 0) {
+      let result = [Object.keys(mS).sort(sorter)];
+      let result2 = [Object.keys(mS2).sort(sorter)]
+      result[0].unshift('Товар');
+      result2[0].unshift('Товар');
+      let u = 1; 
+      let v = 1; 
+      for (let key1 in mS) { 
+        v = 1; 
+        for (let key2 in mS[key1]) {
+          if (result[v]) {
+            result[v][u] = ("="+mS[key1][key2]).replace(".",",")+'/A'+(v+1); 
+            result2[v][u] = mS2[key1][key2]; 
+          } else {
+            result.push([key2, ("="+mS[key1][key2]).replace(".",",")+'/A'+(v+1)]);
+            result2.push([key2, mS2[key1][key2]]);
+          }
+          v+=1; 
+        }
+        u+=1; 
+      }
+      sheetGoods.getRange(1, 2, v, u).setValues(result);
+      sheetGoods2.getRange(1, 1, v, u).setValues(result2);
+    }
+  } 
+  
+  if (res.result.length == 50) {
+    counter += 50*length; 
+    send(50*length); 
+  }
+}

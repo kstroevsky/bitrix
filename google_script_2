@@ -24,10 +24,10 @@ date.setDate(date.getDate()-365);
 date = date.toLocaleString().split(',')[0].replace(/([.])+/g,'-');
 
 // oAuth 2.0
-let refreshToken = dealTable.getRange('M1').getValue(); 
-let accessToken = ''; 
 let clientId = '___';
 let clientSecret = '___';
+let refreshToken = dealTable.getRange('M1').getValue(); 
+let accessToken = ''; 
 
 // Системные константы
 let lengthD = 0; 
@@ -229,7 +229,7 @@ function getDealInvoices(start) {
          res.result[i].ACCOUNT_NUMBER,
          parseInt(res.result[i].PRICE),
          invoiceStages[res.result[i].STATUS_ID],
-         '=D'+numb+'*2,5%',
+         '=ifs(P'+numb+'="Sales";D4*0,025;P'+numb+'="Агенты";D4*0,91*0,025;P'+numb+'="контекстная реклама";D4*0,97*0,025;P'+numb+'="таргетированная реклама";D4*0,97*0,025;P'+numb+'="переход по ссылкам на сайтах";D4*0,97*0,025;P'+numb+'="";"";P'+numb+'="Соц. сети";D4*0,97*0,025;P'+numb+'="СМИ";D4*0,025;P'+numb+'="Сайт";D4*0,97*0,025;P'+numb+'="Рассылка";D4*0,97*0,025;P'+numb+'="Прямые визиты";D4*0,97*0,025;P'+numb+'="Переходы по ссылкам на сайтах";D4*0,97*0,025;P'+numb+'="Органика";D4*0,97*0,025;P'+numb+'="Мероприятие";D4*0,025;P'+numb+'="Корпоративный Email";D4*0,97*0,025;P'+numb+'="Другое";D4*0,025;P'+numb+'="Входящий звонок";D4*0,97*0,025;O4="Вебинар";D4*0,025;P'+numb+'="Outbound";D4*0,025)',
          res.result[i].DATE_INSERT.slice(0,10),
         parseInt(res.result[i].UF_CRM_1596808753),
         '=G'+numb+'+H'+numb,
@@ -271,7 +271,7 @@ function getDealInvoices(start) {
          res.result[i].ACCOUNT_NUMBER,
          parseInt(res.result[i].PRICE),
          invoiceStages[res.result[i].STATUS_ID],
-         '=D'+(numb+2)+'*2,5%',
+         '=ifs(P'+numb+'="Sales";D4*0,025;P'+numb+'="Агенты";D4*0,91*0,025;P'+numb+'="контекстная реклама";D4*0,97*0,025;P'+numb+'="таргетированная реклама";D4*0,97*0,025;P'+numb+'="переход по ссылкам на сайтах";D4*0,97*0,025;P'+numb+'="";"";P'+numb+'="Соц. сети";D4*0,97*0,025;P'+numb+'="СМИ";D4*0,025;P'+numb+'="Сайт";D4*0,97*0,025;P'+numb+'="Рассылка";D4*0,97*0,025;P'+numb+'="Прямые визиты";D4*0,97*0,025;P'+numb+'="Переходы по ссылкам на сайтах";D4*0,97*0,025;P'+numb+'="Органика";D4*0,97*0,025;P'+numb+'="Мероприятие";D4*0,025;P'+numb+'="Корпоративный Email";D4*0,97*0,025;P'+numb+'="Другое";D4*0,025;P'+numb+'="Входящий звонок";D4*0,97*0,025;O4="Вебинар";D4*0,025;P'+numb+'="Outbound";D4*0,025)',
          res.result[i].DATE_INSERT.slice(0,10),
         parseInt(res.result[i].UF_CRM_1596808753),
         '=G'+numb+'+H'+numb,
@@ -318,7 +318,7 @@ function getInvoice(start) {
                              res.result[i].ACCOUNT_NUMBER,
                              parseInt(res.result[i].PRICE),
                              invoiceStages[res.result[i].STATUS_ID],
-                             '=D'+(i+2)+'*2,5%',
+                             '=ifs(O'+(i+2)+'="Sales";D4*0,025;O'+(i+2)+'="Агенты";D4*0,91*0,025;O'+(i+2)+'="контекстная реклама";D4*0,97*0,025;O'+(i+2)+'="таргетированная реклама";D4*0,97*0,025;O'+(i+2)+'="переход по ссылкам на сайтах";D4*0,97*0,025;O'+(i+2)+'="";"";O'+(i+2)+'="Соц. сети";D4*0,97*0,025;O'+(i+2)+'="СМИ";D4*0,025;O'+(i+2)+'="Сайт";D4*0,97*0,025;O'+(i+2)+'="Рассылка";D4*0,97*0,025;O'+(i+2)+'="Прямые визиты";D4*0,97*0,025;O'+(i+2)+'="Переходы по ссылкам на сайтах";D4*0,97*0,025;O'+(i+2)+'="Органика";D4*0,97*0,025;O'+(i+2)+'="Мероприятие";D4*0,025;O'+(i+2)+'="Корпоративный Email";D4*0,97*0,025;O'+(i+2)+'="Другое";D4*0,025;O'+(i+2)+'="Входящий звонок";D4*0,97*0,025;O4="Вебинар";D4*0,025;O'+(i+2)+'="Outbound";D4*0,025)',
                              res.result[i].DATE_INSERT.slice(0,10),
                              parseInt(res.result[i].UF_CRM_1596808753),
                              '=G'+(i+2)+'+H'+(i+2),
@@ -339,7 +339,7 @@ function getInvoice(start) {
                              res.result[i].ACCOUNT_NUMBER,
                              parseInt(res.result[i].PRICE),
                              invoiceStages[res.result[i].STATUS_ID],
-                             '=D'+(i+2)+'*2,5%',
+                             '=ifs(O'+(i+2)+'="Sales";D4*0,025;O'+(i+2)+'="Агенты";D4*0,91*0,025;O'+(i+2)+'="контекстная реклама";D4*0,97*0,025;O'+(i+2)+'="таргетированная реклама";D4*0,97*0,025;O'+(i+2)+'="переход по ссылкам на сайтах";D4*0,97*0,025;O'+(i+2)+'="";"";O'+(i+2)+'="Соц. сети";D4*0,97*0,025;O'+(i+2)+'="СМИ";D4*0,025;O'+(i+2)+'="Сайт";D4*0,97*0,025;O'+(i+2)+'="Рассылка";D4*0,97*0,025;O'+(i+2)+'="Прямые визиты";D4*0,97*0,025;O'+(i+2)+'="Переходы по ссылкам на сайтах";D4*0,97*0,025;O'+(i+2)+'="Органика";D4*0,97*0,025;O'+(i+2)+'="Мероприятие";D4*0,025;O'+(i+2)+'="Корпоративный Email";D4*0,97*0,025;O'+(i+2)+'="Другое";D4*0,025;O'+(i+2)+'="Входящий звонок";D4*0,97*0,025;O4="Вебинар";D4*0,025;O'+(i+2)+'="Outbound";D4*0,025)',
                              res.result[i].DATE_INSERT.slice(0,10),
                              parseInt(res.result[i].UF_CRM_1596808753),
                              '=G'+(i+2)+'+H'+(i+2),

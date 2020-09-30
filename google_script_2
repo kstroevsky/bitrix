@@ -1,0 +1,380 @@
+// ID пользователя в Битрикс24
+let staffId = '18'; 
+
+// Автозамена статусов счетов
+let invoiceStages = {'N':'Новый', 'S':'Отправлен клиенту', 'P':'Оплачен', 'D':'Не оплачен'};
+// Автозамена стадий сделок
+let dealStages = {'NEW':'Sales approach/Анализ клиента 10%','PREPARATION':'New Business Meeting 25%','1':'NDA Signed/Подписан 40%','PREPAYMENT_INVOICE':'Strategic Design/Разработка стратегического предложения 50%','EXECUTING':'Strategic Offer Approved/Стратегическое предложение согласовано 75%','FINAL_INVOICE':'Commercial Offer Approved/Коммерческое предложение согласовано 80%','2':'Contract Negotiations/Согласование договора 90%','3':'Test Project Launched/Тестовое задание запущено в работу 95%','WON':'SUCCESS/УСПЕХ 100%','LOSE':'Сделка провалена','APOLOGY':'Анализ причины провала'}; 
+// Автозамена первичного источника
+let primarySources = {'1016':'Sales', '110':'Агенты', '42':'Вебинар', '1012':'Входящий звонок', '46':'Другое', '30':'Контекстная реклама', '1014':'Корпоративный Email', '34':'Мероприятие', '38':'Органика', '1478':'Переходы по ссылкам на сайтах', '1320':'Прямые визиты', '36':'Рассылка', '44':'СМИ', '40':'Соц. сети', '32':'Таргетированная реклама'}; 
+// Автозамена вторичного источника
+let secondarySources = {'78':'Аутстаффинг Европа','60':'CasinoBeats 2020 Мальта','52':'FB','74':'FB','1300':'FinNext 2020','50':'G.Ads','72':'Google','62':'ICE America 2020 Новый Орлеан','1304':'ICE London 2020','1302':'iFin 2020','64':'IGB 2020 Амстердам','54':'Linkedin','76':'Linkedin','80':'Medium','56':'Twitter','58':'VK','66':'Июнь 2020','1074':'Карташов Александр','128':'Кравцова Юлия','68':'Май 2020','718':'Мелик Нелли','132':'Редькин Андрей','1420':'Шитов Сергей','48':'Я.Директ','70':'Яндекс'}; 
+// Автозамена пользователей
+let userList = {};
+
+// Получение идентификаторов таблиц
+let invoiceTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Выставленные счета');
+let dealFiftyTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Сделки_от 50%_нет счета');
+let dealTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Все сделки');
+let invoiceDealTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Счета');
+
+// Получение даты год назад в нужном формате
+let date = new Date();
+date.setDate(date.getDate()-365);
+date = date.toLocaleString().split(',')[0].replace(/([.])+/g,'-');
+
+// oAuth 2.0
+let refreshToken = dealTable.getRange('M1').getValue(); 
+let accessToken = ''; 
+let clientId = '___';
+let clientSecret = '___';
+
+// Системные константы
+let lengthD = 0; 
+let lengthI = 0; 
+let dealsList = []; 
+let dealsInput = [];
+let invoicesList = []; 
+let invoicesDealList = [];
+let invoicesIdList = [0]; 
+let cName = ''; 
+let cUrl = ''; 
+let counter = 2; 
+
+function doGet(e) {
+  dealTable.getRange('M2').setValue(e);
+}
+
+function onOpenF(e) {
+  // Очистка ячеек таблиц перед обновлением
+  resetByRangesList_(invoiceTable,['A2:P1000']); 
+  resetByRangesList_(dealFiftyTable,['A2:H1000']); 
+  resetByRangesList_(dealTable,['A2:I1000']); 
+  resetByRangesList_(invoiceDealTable,['A2:Q1000']); 
+  
+  getAccessToken(refreshToken); 
+}
+
+function resetByRangesList_(sheet, rangesAddressesList){
+  sheet.getRangeList(rangesAddressesList).clearContent();
+}
+
+function getAccessToken(refreshToken) {
+// Отправляем запрос на получение нового access_token с помощью refresh_token
+  let responseToken = UrlFetchApp.fetch("https://oauth.bitrix.info/oauth/token/?grant_type=refresh_token&client_id="+clientId+"&client_secret="+clientSecret+"&refresh_token="+refreshToken, {
+        'method' : 'get',
+        'contentType': 'application/json',
+  });
+    
+  let responseTokenAnswer = JSON.parse(responseToken.getContentText());
+
+  // Сохраняем access_token в переменную
+  accessToken = responseTokenAnswer['access_token'];
+  // Сохраняем в таблице новый refresh_token
+  dealTable.getRange('M1').setValue(responseTokenAnswer['refresh_token']); 
+  
+  getUserList(0); 
+}
+
+function getUserList(start) {
+  // Получение списка пользователей
+  // Запрос
+  let responseStaff = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/user.get", {
+    'method' : 'get',
+    'contentType': 'application/json',
+    // Порядковый номер сделки, с которой начинается ответ: по умолчанию 0
+    'payload' : JSON.stringify({'start':start, 'access_token':accessToken})
+  });
+  
+  // Расшифровка ответа
+  let resSt = JSON.parse(responseStaff.getContentText());
+  
+  // Проходим по всем пользователям
+  for (let z = 0; z < resSt.result.length; z++) {
+    // Оставляем тех, чей департамент равен следующим значениям
+    if (resSt.result[z].UF_DEPARTMENT[0] == 10
+       || resSt.result[z].UF_DEPARTMENT[0] == 22
+       || resSt.result[z].UF_DEPARTMENT[0] == 12
+       || resSt.result[z].UF_DEPARTMENT[0] == 36
+       || resSt.result[z].UF_DEPARTMENT[0] == 5
+       || resSt.result[z].UF_DEPARTMENT[0] == 16
+       || resSt.result[z].UF_DEPARTMENT[0] == 34
+       && resSt.result[z].LAST_NAME != null && resSt.result[z].LAST_NAME != 'null') {
+      userList[resSt.result[z].ID] = resSt.result[z].NAME+' '+resSt.result[z].LAST_NAME; 
+    } 
+  }
+  
+  // Если запрос вернул не все данные (их больше 50), то отправляем повторный
+  if (resSt.result.hasOwnProperty('next')) {
+    lengthS += 1; 
+    getUserList(50*lengthS); 
+  } else {
+    getDeals(0); 
+  }
+}
+
+function getDeals(start) {
+  // Получаем список сделок
+  let data = {
+    // Порядок по ID
+    'order': {'ID':'ASC'},
+    // Фильтр - принадлежащие пользователю
+    'filter':{'ASSIGNED_BY_ID':staffId},
+    // Список полей, которые получаем по каждой сделке
+    'select': ['ID',
+               'TITLE',
+               'OPPORTUNITY',
+               'STAGE_ID',
+               'PROBABILITY',
+               'DATE_CREATE',
+               'CLOSEDATE',
+               'UF_CRM_1579531389',
+               'UF_CRM_1579530938357',
+               'UF_CRM_1586789032',
+               'UF_CRM_5E8733BB98550',
+               'COMPANY_ID',
+               'UF_CRM_1599578293954'],
+    'start':start, 
+    'access_token':accessToken
+  };
+  
+  let options = {
+    'method' : 'get',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify(data)
+  };
+  
+  let response = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/crm.deal.list", options);
+  let res = JSON.parse(response.getContentText());
+  
+  for (let i = 0; i < res.result.length; i++) {
+    // Находим только привязанные к компаниям сделки
+    if (res.result[i].COMPANY_ID != '0') {
+      // Отправляем запрос на получение названия компании
+      var responseCompany = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/crm.company.get", {
+        'method' : 'get',
+        'contentType': 'application/json',
+        'payload' : JSON.stringify({'ID': res.result[i].COMPANY_ID, 'access_token':accessToken})
+      });
+      
+      var resCompany = JSON.parse(responseCompany.getContentText());
+      
+      // Расшифровываем ответ и сохраняем ИД и Название компании
+      cName = resCompany.result.TITLE; 
+      cUrl = 'http://litota.bitrix24.ru/crm/company/details/'+res.result[i].COMPANY_ID+'/';
+    } 
+        
+    let dealList = [res.result[i].ID, // Ид сделки
+                    res.result[i].TITLE, // Название сделки
+                    cName, // Название компании
+                    parseInt(res.result[i].OPPORTUNITY), // Сумма сделки
+                    dealStages[res.result[i].STAGE_ID], // Стадия сделки
+                    res.result[i].PROBABILITY, // Вероятность сделки
+                    res.result[i].DATE_CREATE.slice(0,10), // Дата создания сделки
+                    res.result[i].CLOSEDATE.slice(0,10), // Дата завершения сделки
+                    res.result[i].UF_CRM_1579531389,
+                    res.result[i].UF_CRM_1579530938357.slice(0,10), // Дата завершения проекта
+                    primarySources[res.result[i].UF_CRM_1586789032], // Первичный источник
+                    secondarySources[res.result[i].UF_CRM_5E8733BB98550], // Вторичный источник
+                    'http://litota.bitrix24.ru/crm/deal/details/'+res.result[i].ID+'/', // Ссылка на сделку
+                    cUrl, // Ссылка на компанию
+                    res.result[i].UF_CRM_1599578293954.slice(0,10) // Дата закрытия канала
+                   ];
+    dealsInput.push([dealList[1],dealList[12],dealList[2],dealList[3],dealList[6],dealList[7],dealList[4],dealList[5],dealList[8]]);
+    dealsList.push(dealList); 
+    
+    let num = lengthD*50+i+2; 
+  }
+  
+  lengthD += 1; 
+  
+  // Если получены еще не все сделки, повторяем запрос
+  if (res.result.hasOwnProperty('next')) {
+    Logger.log(50*lengthD);
+    getDeals(50*lengthD); 
+  } else {
+    getDealInvoices(0);
+    getInvoice(0); 
+  }
+}
+
+function getDealInvoices(start) {
+  // Получаем счета (не старше года) для каждой сделки для таблицы Счета
+  for (let g = 0; g < dealsList.length; g++) {
+    let data = {
+      'order': {'ID':'ASC'},
+      'filter':{'UF_DEAL_ID':dealsList[g][0], '>UF_CRM_1599578293954':date},
+      'select':['UF_DEAL_ID','DATE_INSERT','PRICE','STATUS_ID','UF_CRM_1596808753', 'DATE_PAYED', 'ACCOUNT_NUMBER', 'RESPONSIBLE_ID'],
+      'start':start, 
+      'access_token':accessToken
+    };
+    
+    let options = {
+      'method' : 'get',
+      'contentType': 'application/json',
+      'payload' : JSON.stringify(data)
+    };
+  
+    let response = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/crm.invoice.list", options);
+    let res = JSON.parse(response.getContentText());
+    
+    // Счетчик для таблицы
+    let numb = invoicesDealList.length+2;
+    
+    // Создаем массивы-строки для дальнейшей публикации в таблице
+    for (let i = 0; i < res.result.length; i++) {
+      invoicesDealList.push(
+        [dealsList[g][2],
+         dealsList[g][13],
+         res.result[i].ACCOUNT_NUMBER,
+         parseInt(res.result[i].PRICE),
+         invoiceStages[res.result[i].STATUS_ID],
+         '=D'+numb+'*2,5%',
+         res.result[i].DATE_INSERT.slice(0,10),
+        parseInt(res.result[i].UF_CRM_1596808753),
+        '=G'+numb+'+H'+numb,
+        dealsList[g][12],
+        dealsList[g][1],
+        dealsList[g][3],
+        dealsList[g][14],
+        dealsList[g][9],
+        userList[res.result[i].RESPONSIBLE_ID],
+        dealsList[g][10],
+        dealsList[g][11]
+        ]
+      );
+    }
+  }
+  
+  // Получаем счета без сделок
+  let data = {
+    'order': {'ID':'ASC'},
+    'filter':{'UF_DEAL_ID':0, '>UF_CRM_1599578293954':date, 'RESPONSIBLE_ID':staffId},
+    'select':['UF_DEAL_ID','DATE_INSERT','PRICE','STATUS_ID','UF_CRM_1596808753', 'DATE_PAYED', 'ACCOUNT_NUMBER', 'RESPONSIBLE_ID'],
+    'start':start, 
+    'access_token':accessToken
+  };
+  
+  let options = {
+    'method' : 'get',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify(data)
+  };
+  
+  let response = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/crm.invoice.list", options);
+  let res = JSON.parse(response.getContentText());
+  let numb = invoicesDealList.length + 2;
+  for (let i = 0; i < res.result.length; i++) {
+      invoicesDealList.push(
+        ['',
+         '',
+         res.result[i].ACCOUNT_NUMBER,
+         parseInt(res.result[i].PRICE),
+         invoiceStages[res.result[i].STATUS_ID],
+         '=D'+(numb+2)+'*2,5%',
+         res.result[i].DATE_INSERT.slice(0,10),
+        parseInt(res.result[i].UF_CRM_1596808753),
+        '=G'+numb+'+H'+numb,
+        '','','','','',
+        userList[res.result[i].RESPONSIBLE_ID],
+        '',''
+        ]
+      );
+    }
+  
+  // Отправляем в таблицу "счета"
+  invoiceDealTable.getRange(2, 1, invoicesDealList.length, 17).setValues(invoicesDealList);
+}
+
+function getInvoice(start) {
+  // Получаем список счетов для таблицы Выставленные счета (не старше года и с ответственным пользователем)
+  let data = {
+    'order': {'ID':'ASC'},
+    'filter':{'RESPONSIBLE_ID':staffId, '>UF_CRM_1599578293954':date},
+    'select':['UF_DEAL_ID','DATE_INSERT','PRICE','STATUS_ID','UF_CRM_1596808753', 'DATE_PAYED', 'ACCOUNT_NUMBER', 'RESPONSIBLE_ID'],
+    'start':start,
+    'access_token':accessToken
+  };
+  
+  let options = {
+    'method' : 'get',
+    'contentType': 'application/json',
+    'payload' : JSON.stringify(data)
+  };
+  
+  let response = UrlFetchApp.fetch("https://litota.bitrix24.ru/rest/crm.invoice.list", options);
+  let res = JSON.parse(response.getContentText());
+    
+  for (let i = 0; i < res.result.length; i++) {
+    if (res.result[i].UF_DEAL_ID != null) {
+      invoicesIdList.push(res.result[i].UF_DEAL_ID); 
+      
+      // Перебираем все счета
+      for (let g = 0; g < dealsList.length; g++) {
+        // Счета со сделками
+        if (res.result[i].UF_DEAL_ID == dealsList[g][0]) {
+          let invoiceList = [dealsList[g][2],
+                             dealsList[g][13],
+                             res.result[i].ACCOUNT_NUMBER,
+                             parseInt(res.result[i].PRICE),
+                             invoiceStages[res.result[i].STATUS_ID],
+                             '=D'+(i+2)+'*2,5%',
+                             res.result[i].DATE_INSERT.slice(0,10),
+                             parseInt(res.result[i].UF_CRM_1596808753),
+                             '=G'+(i+2)+'+H'+(i+2),
+                             dealsList[g][12],
+                             dealsList[g][1],
+                             dealsList[g][3],
+                             dealsList[g][14],
+                             dealsList[g][9],
+                             dealsList[g][10],
+                             dealsList[g][11]
+                            ]; 
+          invoicesList.push(invoiceList); 
+        } 
+      }
+    // счета без сделок
+    } else {
+      let invoiceList = ['','',
+                             res.result[i].ACCOUNT_NUMBER,
+                             parseInt(res.result[i].PRICE),
+                             invoiceStages[res.result[i].STATUS_ID],
+                             '=D'+(i+2)+'*2,5%',
+                             res.result[i].DATE_INSERT.slice(0,10),
+                             parseInt(res.result[i].UF_CRM_1596808753),
+                             '=G'+(i+2)+'+H'+(i+2),
+                             '','','','','','',''
+                            ];
+      invoicesList.push(invoiceList);
+    }
+  } 
+  for (let i = 0; i < dealsList.length; i++) {
+    // Заполняем таблицу 50% сделки по условию стадий
+    if (dealsList[i][4] == 'Contract Negotiations/Согласование договора 90%'
+        || dealsList[i][4] == 'Test Project Launched/Тестовое задание запущено в работу 95%'
+        || dealsList[i][4] == 'Strategic Design/Разработка стратегического предложения 50%'
+        || dealsList[i][4] == 'Strategic Offer Approved/Стратегическое предложение согласовано 75%'
+        || dealsList[i][4] == 'Commercial Offer Approved/Коммерческое предложение согласовано 80%') {
+      let num = lengthI*50+counter;
+      dealFiftyTable.getRange('A'+(num)).setValue(dealsList[i][1]); 
+      dealFiftyTable.getRange('B'+(num)).setValue(dealsList[i][12]); 
+      dealFiftyTable.getRange('C'+(num)).setValue(dealsList[i][2]);
+      dealFiftyTable.getRange('D'+(num)).setValue(dealsList[i][6]);
+      dealFiftyTable.getRange('E'+(num)).setValue(dealsList[i][3]); 
+      dealFiftyTable.getRange('F'+(num)).setValue(dealsList[i][4]); 
+      dealFiftyTable.getRange('G'+(num)).setValue(dealsList[i][7]); 
+      dealFiftyTable.getRange('H'+(num)).setValue(dealsList[i][5]); 
+      counter++; 
+    }
+  }
+  
+  lengthI += 1; 
+  // Если получили не все счета, отправляем запрос снова
+  if (res.result.length == 50) {
+    getInvoice(50*lengthI); 
+  } else {
+    // заполняем таблицы сделок и выставленных счетов
+    dealTable.getRange(2, 1, dealsInput.length, 9).setValues(dealsInput);
+    invoiceTable.getRange(2, 1, invoicesList.length, 16).setValues(invoicesList);
+  }
+}

@@ -18,6 +18,9 @@ let dealFiftyTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Сд�
 let dealTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Все сделки');
 let invoiceDealTable = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Счета');
 
+// Получаем идентификатор таблицы, которая хранит refresh_token
+let tokenSpreadsheet = SpreadsheetApp.openById("___").getSheetByName('Токен');
+
 // Получение даты год назад в нужном формате
 let date = new Date();
 date.setDate(date.getDate()-365);
@@ -26,7 +29,8 @@ date = date.toLocaleString().split(',')[0].replace(/([.])+/g,'-');
 // oAuth 2.0
 let clientId = '___';
 let clientSecret = '___';
-let refreshToken = dealTable.getRange('M1').getValue(); 
+// Получаем refresh_token
+let refreshToken = tokenSpreadsheet.getRange('A2').getValue(); 
 let accessToken = ''; 
 
 // Системные константы
@@ -42,6 +46,7 @@ let cUrl = '';
 let counter = 2; 
 
 function doGet(e) {
+  // Функция (про запас) для регистрации нового refresh_token
   dealTable.getRange('M2').setValue(e);
 }
 
@@ -71,7 +76,7 @@ function getAccessToken(refreshToken) {
   // Сохраняем access_token в переменную
   accessToken = responseTokenAnswer['access_token'];
   // Сохраняем в таблице новый refresh_token
-  dealTable.getRange('M1').setValue(responseTokenAnswer['refresh_token']); 
+  tokenSpreadsheet.getRange('A2').setValue(responseTokenAnswer['refresh_token']); 
   
   getUserList(0); 
 }

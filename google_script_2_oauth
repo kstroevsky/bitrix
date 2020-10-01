@@ -288,7 +288,6 @@ function getDealInvoices(start) {
     }
   
   // Отправляем в таблицу "счета"
-  invoiceDealTable.getRange(2, 1, invoicesDealList.length, 17).setValues(invoicesDealList);
 }
 
 function getInvoice(start) {
@@ -381,5 +380,6 @@ function getInvoice(start) {
     // заполняем таблицы сделок и выставленных счетов
     dealTable.getRange(2, 1, dealsInput.length, 9).setValues(dealsInput);
     invoiceTable.getRange(2, 1, invoicesList.length, 16).setValues(invoicesList);
+    invoiceDealTable.getRange(2, 1, invoicesDealList.length, 17).setValues(invoicesDealList);
   }
 }
